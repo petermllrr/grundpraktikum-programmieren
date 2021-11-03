@@ -1,0 +1,93 @@
+package io.petermueller.petrinetz.views;
+
+import java.awt.Color;
+import java.awt.Font;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+
+import io.petermueller.petrinetz.models.filesystem.FileSystemModel;
+import io.petermueller.petrinetz.models.rgraph.RGraphModel;
+import io.petermueller.petrinetz.models.rgraph.TransitionArc;
+import io.petermueller.petrinetz.util.BoundednessAnalysis;
+
+public class TextAreaView {
+	public JScrollPane textArea;
+	private JTextArea inputField;
+	
+	public TextAreaView() {
+		inputField = new JTextArea();
+		textArea = new JScrollPane(inputField);
+		textArea.setBorder(
+				BorderFactory.createLineBorder(new Color(0xDADCE0), 1)
+		);
+		inputField.setText("Open a PNML file via \"File > Open…\"");
+		inputField.setBackground(Color.white);
+		inputField.setBorder(new EmptyBorder(8, 8, 8, 8));
+		inputField.setFont(new Font("monospaced", Font.PLAIN, 13));
+		inputField.setWrapStyleWord(true);
+		inputField.setLineWrap(true);
+	}
+	
+	public void setText(String text) {
+		inputField.setText(text);
+		scrollToEnd();
+	}
+	
+	public void output(String text) {
+		insertLineBreak();
+		insertTextBelow(text);
+		scrollToEnd();
+	}
+	
+	public void clear() {
+		inputField.setText("");
+	}
+	
+	public void showBoundednessDetails(
+			BoundednessAnalysis analysis,
+			FileSystemModel fileSystemModel,
+			RGraphModel rGraph) {
+		String result = "Boundedness analysis for " +
+				 		fileSystemModel.getCurrentFileName() + ":\n";
+		if (analysis.isBounded) {
+			int possibleMarkings = rGraph.markings.size();
+			result = result +
+					 "Bounded. " + possibleMarkings + " possible Markings.";
+		} else {
+			result = result + 
+					 "Unbounded. Abort criteria:\n" +
+					 "m    " + analysis.m1.id + "\n" +
+					 "m'   " + analysis.m2.id + "\n";
+			Boolean firstLine = true;
+			for (TransitionArc arc : analysis.detectionPath) {
+				if (firstLine) {
+					result = result +
+							"Path " + arc.id;
+					firstLine = false;
+				} else {
+					result = result + "\n" +
+							 "     " +
+							 arc.id;
+				}
+			}
+		}
+		output(result);
+	}
+	
+	private void insertLineBreak() {
+		String text = inputField.getText();
+		text = text + "\n";
+		inputField.setText(text);
+	}
+	
+	private void scrollToEnd() {
+		inputField.setCaretPosition(inputField.getDocument().getLength());
+	}
+	
+	private void insertTextBelow(String newText) {
+		String text = inputField.getText();
+		text = text + newText;
+		inputField.setText(text);
+	}
+}

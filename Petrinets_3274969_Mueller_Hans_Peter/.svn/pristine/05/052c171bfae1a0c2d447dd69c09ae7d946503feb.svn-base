@@ -1,0 +1,117 @@
+package io.petermueller.petrinetz.views;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import org.graphstream.graph.*;
+import org.graphstream.graph.implementations.*;
+import org.graphstream.ui.swing_viewer.SwingViewer;
+import org.graphstream.ui.swing_viewer.ViewPanel;
+
+import io.petermueller.petrinetz.models.rgraph.Marking;
+import io.petermueller.petrinetz.models.rgraph.RGraphModel;
+
+public class RGraphView {
+	public JPanel panel;
+	private Graph graph;
+	public ViewPanel view;
+	public SwingViewer viewer;
+	
+	public RGraphView() {
+		panel = new JPanel();
+		graph = new MultiGraph("Reachability Graph");
+		viewer = new SwingViewer(
+			graph,
+			SwingViewer.ThreadingModel.GRAPH_IN_GUI_THREAD
+		);
+		viewer.enableAutoLayout();
+		view = (ViewPanel) viewer.addDefaultView(false);
+		
+		panel.setBackground(Color.white);	
+		panel.setBorder(
+			BorderFactory.createLineBorder(new Color(0xDADCE0), 1)
+		);
+		panel.setLayout(new BorderLayout());
+		panel.add((JPanel) view, BorderLayout.CENTER);
+	}
+	
+	private void initGraph() {
+		graph.setAttribute("ui.quality");
+		graph.setAttribute("ui.antialias");
+		graph.setAttribute("ui.stylesheet", initStyleSheet());
+	}
+	
+	public void renderInitialRGraph(RGraphModel model) {
+		graph.clear();
+		initGraph();
+		createNode(model.root);
+		view.getCamera().resetView();
+	}
+	
+	public void updateRGraph(RGraphModel model) {
+		recursivelyUpdateGraph(model.root);
+	}
+	
+	private void recursivelyUpdateGraph(Marking marking) {
+		String id = marking.getSerialID();
+		if (!nodeExists(id)) {
+			createNode(marking);
+		} else {
+			if (marking.children != null) {
+				for (Marking child : marking.children) {
+					recursivelyUpdateGraph(child);
+				}
+			}
+		}
+	}
+	
+	private void createNode(Marking marking) {
+		String label = marking.getIdString();
+		String id = marking.getSerialID();
+		graph.addNode(id);
+		graph.getNode(id).setAttribute("ui.label", label);
+		if (marking.parent != null) {
+			graph.addEdge(marking.parent.getSerialID() + marking.getSerialID(),
+			marking.parent.getSerialID(),
+			marking.getSerialID());
+			graph.getEdge(marking.parent.getSerialID() + marking.getSerialID())
+				.setAttribute(
+					"ui.label",
+					marking.transition
+				);
+		}
+	}
+	
+	private Boolean nodeExists(String id) {
+		if (graph.getNode(id) != null) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	private String initStyleSheet() {
+		String styleSheet;
+		styleSheet =
+	        "node {" +
+	        "  text-background-color: #DADCE0;" + // Grey 300
+	        "  text-color: #202124;" +
+	        "  text-size: 11;" +
+	        "  text-background-mode: rounded-box;" +
+	        "  text-padding: 3px, 0px;" +
+	        "}" +
+	        "edge {" +
+	        "  fill-color: #3C4043;" +
+	        "  text-background-color: #DADCE0;" +
+	        "  text-color: #202124;" +
+	        "  text-size: 11;" +
+	        "  arrow-shape: arrow;" +
+	        "  arrow-size: 4px, 3px;" +
+	        "  text-background-mode: rounded-box;" +
+	        "  text-padding: 3px, 0px;" +
+	        "}";
+		
+		 return styleSheet;
+	}
+}

@@ -1,0 +1,300 @@
+package tests;
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+
+import io.petermueller.petrinetz.models.petrinet.PetriNetModel;
+
+/**
+ * 
+ */
+
+/**
+ * @author petermueller
+ *
+ */
+@DisplayName("Petri Net Model")
+class PetriNetModelTest {
+	private PetriNetModel petriNet;
+
+	/**
+	 * @throws java.lang.Exception
+	 */
+	@BeforeEach
+	void setUp() throws Exception {
+		petriNet = new PetriNetModel();
+	}
+
+	@Nested
+	@DisplayName("Transitions")
+	class Transitions {
+		@BeforeEach
+		void beforeAll() {
+			petriNet = new PetriNetModel();
+			petriNet.addTransition("t1");
+			petriNet.setPosition("t1", 3, 9000);
+			petriNet.setName("t1", "send mail");
+			petriNet.addTransition("t2");
+			petriNet.setPosition("t2", 5000, 3);
+			petriNet.setName("t2", "receive mail");
+		}
+		
+		@Test
+		@DisplayName("are loaded")
+		void correctAmount() {
+			assertEquals(2, petriNet.transitions.size());
+		}
+		
+		@Test
+		@DisplayName("have the correct id")
+		void correctId() {
+			assertAll("ids",
+				() -> assertEquals("t1", petriNet.transitions.get(0).id),
+				() -> assertEquals("t2", petriNet.transitions.get(1).id)
+			);
+		}
+		
+		@Test
+		@DisplayName("have the correct name")
+		void correctName() {
+			assertAll("names",
+				() -> assertEquals(
+						"send mail", petriNet.transitions.get(0).name),
+				() -> assertEquals(
+						"receive mail", petriNet.transitions.get(1).name)
+			);
+		}
+		
+		@Test
+		@DisplayName("have the correct coordinates")
+		void correctCoordinates() {
+			assertAll("coordinates",
+				() -> assertEquals(
+						3, petriNet.transitions.get(0).x),
+				() -> assertEquals(
+						-9000, petriNet.transitions.get(0).y),
+				() -> assertEquals(
+						5000, petriNet.transitions.get(1).x),
+				() -> assertEquals(
+						-3, petriNet.transitions.get(1).y)
+			);
+		}
+	}
+	
+	@Nested
+	@DisplayName("Places")
+	class Places {
+		@BeforeEach
+		void beforeEach() {
+			petriNet = new PetriNetModel();
+			petriNet.addPlace("p1");
+			petriNet.setPosition("p1", 3, 9000);
+			petriNet.setName("p1", "mailbox");
+			petriNet.addPlace("p2");
+			petriNet.setPosition("p2", 5000, 3);
+			petriNet.setName("p2", "post car");
+			petriNet.setTokens("p2", 3);
+		}
+		
+		@Test
+		@DisplayName("are loaded")
+		void correctAmount() {
+			assertEquals(2, petriNet.places.size());
+		}
+		
+		@Test
+		@DisplayName("have the correct id")
+		void correctId() {
+			assertAll("ids",
+				() -> assertEquals("p1", petriNet.places.get(0).id),
+				() -> assertEquals("p2", petriNet.places.get(1).id)
+			);
+		}
+		
+		@Test
+		@DisplayName("have the correct name")
+		void correctName() {
+			assertAll("names",
+				() -> assertEquals("mailbox", petriNet.places.get(0).name),
+				() -> assertEquals("post car", petriNet.places.get(1).name)
+			);
+		}
+		
+		@Test
+		@DisplayName("have the correct tokens")
+		void correctTokens() {
+			assertAll("tokens",
+				() -> assertEquals(0, petriNet.places.get(0).currentTokens),
+				() -> assertEquals(0, petriNet.places.get(0).startTokens),
+				() -> assertEquals(3, petriNet.places.get(1).currentTokens),
+				() -> assertEquals(3, petriNet.places.get(1).startTokens)
+			);
+		}
+		
+		@Test
+		@DisplayName("don't take negative token amounts")
+		void noNegativeTokens() {
+			petriNet.addPlace("p3");
+			petriNet.setTokens("p3", -3);
+			assertEquals(0, petriNet.places.get(2).currentTokens);
+		}
+	}
+	
+	@Nested
+	@DisplayName("Arcs")
+	class Arcs {
+		@BeforeEach
+		void beforeEach() {
+			petriNet = new PetriNetModel();
+			petriNet.addPlace("p1");
+			petriNet.setPosition("p1", 3, 9000);
+			petriNet.setName("p1", "mailbox");
+			petriNet.setTokens("p1", 3);
+			petriNet.addPlace("p2");
+			petriNet.setPosition("p2", 5000, 3);
+			petriNet.setName("p2", "post car");
+			petriNet.addTransition("t1");
+			petriNet.addArc("a1", "p1", "p2");
+			petriNet.addArc("a2", "p2", "p1");
+		}
+		
+		@Test
+		@DisplayName("are loaded")
+		void currentEqualStart() {
+			assertEquals(2, petriNet.arcs.size());
+		}
+		
+		@Test
+		@DisplayName("have the correct id")
+		void haveId() {
+			assertAll("id",
+				() -> assertEquals("a1", petriNet.arcs.get(0).id),
+				() -> assertEquals("a2", petriNet.arcs.get(1).id)
+			);
+		}
+		
+		@Test
+		@DisplayName("have the correct source")
+		void haveSource() {
+			assertAll("id",
+				() -> assertEquals("p1", petriNet.arcs.get(0).source.id),
+				() -> assertEquals("p2", petriNet.arcs.get(1).source.id)
+			);
+		}
+		
+		@Test
+		@DisplayName("have the correct target")
+		void haveTarget() {
+			assertAll("id",
+				() -> assertEquals("p2", petriNet.arcs.get(0).target.id),
+				() -> assertEquals("p1", petriNet.arcs.get(1).target.id)
+			);
+		}
+	}
+	
+	@Nested
+	@DisplayName("Firing a transition")
+	class AfterFiring {
+		@Test
+		@DisplayName("transitions are enabled and disabled correctly")
+		void enabledAndDisabled() {
+			fail("Not yet implemented");
+		}
+		
+		@Test
+		@DisplayName("input places have 1 token less")
+		void inputs() {
+			fail("Not yet implemented");
+		}
+		
+		@Test
+		@DisplayName("output places have 1 token more")
+		void outputs() {
+			fail("Not yet implemented");
+		}
+	}
+	
+	@Nested
+	@DisplayName("after resetting the petri net")
+	class AfterRest {
+		@Test
+		@DisplayName("current tokens equal start tokens")
+		void currentEqualStart() {
+			fail("Not yet implemented");
+		}
+	}
+	
+	@Test
+	@DisplayName("stores selected place")
+	void storesSelectedPlace() {
+		fail("Not yet implemented");
+	}
+
+	@Test
+	@DisplayName("sets custom marking flag")
+	void customMarkingFlag() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	@DisplayName("sets file changed flag")
+	void fileChangedFlag() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	@DisplayName("stores last transition")
+	void storesLastTransition() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	@DisplayName("stores file name")
+	void storesFileName() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	@DisplayName("is empty after init")
+	void isEmptyAfterInit() {
+		fail("Not yet implemented");
+	}
+
+	@Test
+	@DisplayName("returns the location from id")
+	void returnsLocation() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	@DisplayName("sets selected place")
+	void setsSelectedPlace() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	@DisplayName("removes selected place")
+	void removesSelectedPlace() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	@DisplayName("resets to start marking")
+	void resets() {
+		fail("Not yet implemented");
+	}
+	
+	@Test
+	@DisplayName("loads another petri net")
+	void loads() {
+		fail("Not yet implemented");
+	}
+}

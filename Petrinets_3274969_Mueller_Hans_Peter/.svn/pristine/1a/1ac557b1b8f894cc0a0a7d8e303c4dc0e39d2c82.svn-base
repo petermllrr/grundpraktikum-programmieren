@@ -1,0 +1,122 @@
+package io.petermueller.petrinetz.models.rgraph;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+import io.petermueller.petrinetz.models.petrinet.Place;
+
+public class Marking {
+	protected List<Place> marking = new ArrayList<Place>();
+	protected Boolean isActive = false;
+	public Marking parent;
+	public List<Marking> children = new ArrayList<Marking>();
+	public String transition;
+	protected int serialId;
+	
+	public Marking(int serialId) {
+		this.serialId = serialId;
+	}
+
+	public String getIdString() {
+		String id = "(";
+		id = outputAllTokens(id);
+		id = removeLastCharacter(id);
+		id = id + ")";
+		return id;
+	}
+	
+	public String getSerialID() {
+		return Integer.toString(serialId);
+	}
+	
+	protected int getTokens(String id) {
+		for (Place place : marking) {
+			if (place.id.equals(id)) {
+				return place.currentTokens;
+			}
+		}
+		return 0;
+	}
+	
+	protected Place getPlace(String id) {
+		for (Place place : marking) {
+			if (place.id.equals(id)) {
+				return place;
+			}
+		}
+		return null;
+	}
+	
+	protected void setActive(Boolean bool) {
+		if (bool) {
+			isActive = true;
+		} else {
+			isActive = false;
+		}
+	}
+
+	protected void setTokens(String id, int tokens) {
+		for (Place place : marking) {
+			if (place.id.equals(id)) {
+				place.currentTokens = tokens;
+			}
+		}
+	}
+
+	protected void addEmptyPlace(String id, int tokens) {
+		Place place = new Place(id);
+		place.currentTokens = 0;
+		marking.add(place);
+		sortMarkingsAlphabetically();
+	}
+	
+	protected void addChild(Marking marking) {
+		if (!childAlreadyExists(marking)) {
+			children.add(marking);
+		}
+	}
+
+	protected Boolean hasPlace(String id) {
+		for (Place tuple : marking) {
+			if (tuple.id.equals(id)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	protected void copyTokens(Marking from) {
+		marking = new ArrayList<Place>(from.marking);
+	}
+
+	private String removeLastCharacter(String string) {
+		return string.substring(0, string.length() - 1);
+	}
+	
+	private String outputAllTokens(String string) {
+		for (Place marking : marking) {
+			string = string + marking.currentTokens + "|";
+		}
+		return string;
+	}
+	
+	private void sortMarkingsAlphabetically() {
+		Collections.sort(marking, new Comparator<Place>() {
+			@Override
+			public int compare(Place o1, Place o2) {
+				return o1.id.compareTo(o2.id);
+			}
+		});
+	}
+	
+	private Boolean childAlreadyExists(Marking marking) {
+		for (Marking child : children) {
+			if (child.getIdString().equals(marking)) {
+				return true;
+			}
+		}
+		return false;
+	}
+}

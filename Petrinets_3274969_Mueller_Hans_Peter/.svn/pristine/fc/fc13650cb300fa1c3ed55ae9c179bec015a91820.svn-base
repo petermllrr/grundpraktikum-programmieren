@@ -1,0 +1,14 @@
+package io.petermueller.petrinetz.models.rgraph;
+
+public class TransitionArc {
+	public Marking source;
+	public Marking target;
+	public String id;
+	public Boolean isLatest;
+	
+	public TransitionArc(String id, Marking source, Marking target) {
+		this.id = id;
+		this.source = source;
+		this.target = target;
+	}
+}

@@ -1,0 +1,114 @@
+package io.petermueller.petrinetz.controllers;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+
+import javax.swing.JFrame;
+import io.petermueller.petrinetz.models.filesystem.FileSystemModel;
+import io.petermueller.petrinetz.models.petrinet.*;
+import io.petermueller.petrinetz.util.Event;
+import io.petermueller.petrinetz.util.EventListener;
+import io.petermueller.petrinetz.views.MainFrameView;
+import io.petermueller.petrinetz.views.PetriNetView;
+import io.petermueller.petrinetz.views.StatusBarView;
+import io.petermueller.petrinetz.views.TextAreaView;
+import io.petermueller.petrinetz.views.ToolbarView;
+
+public class MainFrameController {
+	protected PetriNetModel petriNetModel;
+	protected FileSystemModel fileSystemModel;
+	protected MainFrameView mainFrameView;
+	protected ToolbarView toolbarView;
+	protected StatusBarView statusBarView;
+	protected TextAreaView textAreaView;
+	protected PetriNetView petriNetView;
+	protected PetriNetController petriNetController;
+	protected ToolbarController toolbarController;
+	
+	public MainFrameController() {
+		petriNetModel = new PetriNetModel();
+		fileSystemModel = new FileSystemModel(petriNetModel);
+		mainFrameView = new MainFrameView();
+		
+		mainFrameView.mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		initializeMenu();
+		renderMainLayout();
+	}
+	
+	protected void initializeMenu() {
+		mainFrameView.menuOpen.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) { 
+				fileSystemModel.readNewFile(mainFrameView.mainFrame);
+			}
+		});
+		mainFrameView.menuQuit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				System.exit(0);
+			};
+		});
+		mainFrameView.menuInfo.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) { 
+				new InfoDialogController(mainFrameView.mainFrame);
+			}
+		});
+		mainFrameView.menuReload.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) { 
+				File currentFile = fileSystemModel.getCurrentFile();
+				fileSystemModel.readNewFile(currentFile);
+			}
+		});
+	}
+	
+	protected void renderMainLayout() {
+		statusBarView = new StatusBarView();
+		textAreaView = new TextAreaView();
+		petriNetView = new PetriNetView();
+		toolbarView = new ToolbarView();
+		petriNetController = new PetriNetController(
+			petriNetModel,
+			petriNetView
+		);
+		toolbarController = new ToolbarController(
+			toolbarView,
+			fileSystemModel,
+			petriNetModel
+		);
+		
+		
+		mainFrameView.renderMainLayout(
+			toolbarView.toolbar,
+			statusBarView.statusBar,
+			textAreaView.textArea,
+			petriNetView.panel
+		);
+		
+		fileSystemModel.addEventListener(new EventListener() {
+			@Override
+			public void event(Event eventType) {
+				if (eventType == Event.NEW_FILE_OPENED) {
+					statusBarView.setText(fileSystemModel.getCurrentFileName());
+					statusBarView.setEdited(false);
+					textAreaView.setText(petriNetModel.getContentsAsString());
+					mainFrameView.menuReload.setEnabled(true);
+					petriNetView.renderPetriNet(
+						petriNetModel.transitions,
+						petriNetModel.places,
+						petriNetModel.arcs
+					);
+				}
+			}
+		});
+		
+		petriNetModel.addEventListener(new EventListener() {
+			@Override
+			public void event(Event eventType) {
+				if (eventType == Event.MARKING_CHANGED) {
+					if (petriNetModel.fileChanged) {
+						statusBarView.setEdited(true);
+					}
+				}
+			}
+		});
+	}
+}

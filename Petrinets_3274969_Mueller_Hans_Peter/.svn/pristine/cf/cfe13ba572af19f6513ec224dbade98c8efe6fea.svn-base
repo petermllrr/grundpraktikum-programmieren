@@ -1,0 +1,126 @@
+## TODO
+
+###
+
+- 250: FIXED endlosschleife
+- 257: FIXED endlosschleife (circle)
+- 274: FIXED endlosschleife (circle)
+- 276: FIXED endlosschleife (circle)
+
+⠸⣷⣦⠤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣠⣤⠀⠀⠀
+⠀⠙⣿⡄⠈⠑⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠔⠊⠉⣿⡿⠁⠀⠀⠀
+⠀⠀⠈⠣⡀⠀⠀⠑⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⠊⠁⠀⠀⣰⠟⠀⠀⠀⣀⣀
+⠀⠀⠀⠀⠈⠢⣄⠀⡈⠒⠊⠉⠁⠀⠈⠉⠑⠚⠀⠀⣀⠔⢊⣠⠤⠒⠊⠉⠀⡜
+⠀⠀⠀⠀⠀⠀⠀⡽⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠩⡔⠊⠁⠀⠀⠀⠀⠀⠀⠇
+⠀⠀⠀⠀⠀⠀⠀⡇⢠⡤⢄⠀⠀⠀⠀⠀⡠⢤⣄⠀⡇⠀⠀⠀⠀⠀⠀⠀⢰⠀
+⠀⠀⠀⠀⠀⠀⢀⠇⠹⠿⠟⠀⠀⠤⠀⠀⠻⠿⠟⠀⣇⠀⠀⡀⠠⠄⠒⠊⠁⠀
+⠀⠀⠀⠀⠀⠀⢸⣿⣿⡆⠀⠰⠤⠖⠦⠴⠀⢀⣶⣿⣿⠀⠙⢄⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢻⣿⠃⠀⠀⠀⠀⠀⠀⠀⠈⠿⡿⠛⢄⠀⠀⠱⣄⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢸⠈⠓⠦⠀⣀⣀⣀⠀⡠⠴⠊⠹⡞⣁⠤⠒⠉⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⣠⠃⠀⠀⠀⠀⡌⠉⠉⡤⠀⠀⠀⠀⢻⠿⠆⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠰⠁⡀⠀⠀⠀⠀⢸⠀⢰⠃⠀⠀⠀⢠⠀⢣⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⢶⣗⠧⡀⢳⠀⠀⠀⠀⢸⣀⣸⠀⠀⠀⢀⡜⠀⣸⢤⣶⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠈⠻⣿⣦⣈⣧⡀⠀⠀⢸⣿⣿⠀⠀⢀⣼⡀⣨⣿⡿⠁⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠈⠻⠿⠿⠓⠄⠤⠘⠉⠙⠤⢀⠾⠿⣿⠟⠋
+
+### RGraph
+
+- [ ] Anfangsknoten muss hervorgehoben werden wenn aktiv
+- [ ] clear rgraph button
+- [X] +/- buttons resests rgraph
+- [X] +/- buttons do anything
+- [X] Click in rgraph sets petrinet to marking
+- [X] Reset muss isActive veraendern
+- [X] Styling des aktiven
+- [X] Styling des zuletzt besuchten wie in PDF
+
+### Petrienet
+
+- [X] Tokens > 9
+- [X] Active place visual highlight
+- [ ] Check if "Beispiele" directory exists
+- [X] Remove unneeded icons
+- [ ] Refactor FileSystemModel (talk to controllers etc)
+- [X] Remove or improve empty Layout
+- [X] Interface fuer Eventschleudern schreiben
+
+### General
+
+- [ ] Remove min/max sizes and work with emptyBorder or
+	  setMargins(new Inset(...)) paddings
+	
+- - -
+
+## Notes
+
+### Markings und der Erreichbarkeitsgraph:
+	  
+MarkingsTree
+	- Marking
+		- "[s1, 0], [s2, 3], [s3, 4]"
+		- Children
+			- Marking
+				- [s1, 0], [s2, 3], [s3, 4]
+				- Children
+					- Marking
+						- [s1, 1], [s2, 2], [s3, 5]
+						- Current: true
+						- Children
+			- Marking
+				- [...] // Das waere eine Abzweigung
+
+class Marking
+	- List<int> markings
+	- Boolean currentMarking
+	- List<Marking> children
+	- String getMarkingLabel()
+
+class MarkingTree
+	- Marking root
+	- Marking getCurrentMarking()
+	- Marking getParentMarking()
+	- Boolean markingExists() ?
+	- void addMarking(Marking)
+	- void removeAllMarkingsExceptRoot()
+
+PetriNetModel
+	- void fire()
+		- checkIfFireable()
+		- MarkingTree.getCurrentMarking()
+		- MarkingTree.addMarkingAt(currentMarking)
+
+Event.MARKING_CHANGED
+	- PetriNetController
+		- void updatePetriNet(PetriNetModel.getCurrentMarking)
+	- ReachabilityGraphController
+		- void updateRG(addNewChild(PetriNetModel.getCurrentMarking())
+
+ToolbarController
+	- Event: Reset Button Pressed
+		- PetriNetModel.setRootAsCurrent()
+		- PetriNetView.updatePetriNet(getCurrentMarking)
+		- ReachabilityGraphView.update()
+
+ToolbarController
+	- Event: Change Markers
+	    - PetriNetModel.removeAllMarkingsExceptRoot
+	    - PetriNetView.updatePetriNet(getCurrentMarking)
+	    - ReachabilityGraphView.removeAllExceptRoot()
+    
+ReachabilityGraphView
+	- void removeAllExceptRoot()
+	- void update()
+	
+---
+
+RGraphMode
+- List<Marking> markings
+- List<Arc> arcs
+
+Marking
+- String id
+
+Arc
+- String id
+- Marking source
+- Marking target

@@ -1,0 +1,132 @@
+package io.petermueller.petrinetz.models.rgraph;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import io.petermueller.petrinetz.models.petrinet.PetriNetModel;
+import io.petermueller.petrinetz.models.petrinet.Place;
+import io.petermueller.petrinetz.models.petrinet.Transition;
+import io.petermueller.petrinetz.util.Event;
+import io.petermueller.petrinetz.util.EventEmitter;
+
+public class RGraphModel extends EventEmitter {
+	public Marking root;
+	protected PetriNetModel petriNetModel;
+	private int serialCounter;
+	
+	public RGraphModel(PetriNetModel petriNetModel) {
+		this.petriNetModel = petriNetModel;
+		serialCounter = 0;
+		addMarking();
+	}
+	
+	protected Marking getActiveMarking() {
+		return recursiveSearchForActive(root);
+	}
+	
+	private Marking recursiveSearchForActive(Marking marking) {
+		Marking result = null;
+		if (!marking.isActive) {
+			if (marking.children != null) {
+				for (Marking child : marking.children) {
+					result = recursiveSearchForActive(child);
+				}
+			}
+		} else {
+			result = marking;
+		}
+		return result;
+	}
+	
+	protected Marking getParentMarking(String id, Marking marking) {
+		Marking result = null;
+		if (marking.children != null) {
+			for (Marking child : marking.children) {
+				if (child.getIdString().equals(id)) {
+					result = marking;
+				}
+			}
+			if (result == null) {
+				for (Marking child : marking.children) {
+					result = getParentMarking(id, child);
+				}
+			}
+		}
+		return result;
+	}
+	
+	protected void addMarking() {
+		Marking marking = new Marking(serialCounter);
+		serialCounter ++;
+		if (root == null) {
+			root = marking;
+		} else {
+			Marking currentMarking = getActiveMarking();
+			currentMarking.addChild(marking);
+			marking.parent = currentMarking;
+		}
+		setActiveMarking(marking);
+	}
+	
+	protected void setActiveMarking(Marking marking) {
+		recursivelyUnsetActive(root);
+		marking.setActive(true);
+	}
+	
+	private void recursivelyUnsetActive(Marking marking) {
+		marking.setActive(false);
+		if (marking.children != null) {
+			for (Marking child : marking.children) {
+				recursivelyUnsetActive(child);
+			}
+		}
+	}
+	
+	protected void clear() {
+		root = null;
+		addMarking();
+		serialCounter = 0;
+	}
+	
+	/*
+	public void reset() {
+		clear();
+		List<Place> startMarking = getCurrentPetriNetPlaceList();
+		root.marking = startMarking;
+	}
+	*/
+	
+	public void syncCurrentMarkingWithPetriNet() {
+		List<Place> placeList = getCurrentPetriNetPlaceList();
+		getActiveMarking().marking = placeList;
+	}
+	
+	private List<Place> getCurrentPetriNetPlaceList() {
+		List<Place> placeList = new ArrayList<Place>(
+			petriNetModel.places.size()
+		);
+		for (Place petriNetPlace : petriNetModel.places) {
+			Place copiedPlace = new Place(petriNetPlace.id);
+			copiedPlace.currentTokens = petriNetPlace.currentTokens;
+			placeList.add(copiedPlace);
+		}
+		return placeList;
+	}
+	
+	public void appendNewMarkingToGraph() {
+		createNewMarkingFromCurrentPetriNet();
+		fireEvent(Event.RGRAPH_NEW_NODE_ADDED);
+	}
+	
+	private void createNewMarkingFromCurrentPetriNet() {
+		List<Place> placeList = getCurrentPetriNetPlaceList();
+		addMarking();
+		getActiveMarking().marking = placeList;
+		getActiveMarking().transition = generateTransitionString();
+	}
+	
+	private String generateTransitionString() {
+		Transition transition = petriNetModel.lastTransition;
+		return "[" + transition.id + "] " + transition.name;
+	}
+}

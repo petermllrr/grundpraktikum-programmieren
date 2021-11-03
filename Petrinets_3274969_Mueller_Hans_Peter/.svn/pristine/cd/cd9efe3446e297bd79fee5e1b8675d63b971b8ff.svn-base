@@ -1,0 +1,205 @@
+package io.petermueller.petrinetz.controllers;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import io.petermueller.petrinetz.models.filesystem.FileSystemModel;
+import io.petermueller.petrinetz.models.petrinet.PetriNetModel;
+import io.petermueller.petrinetz.models.rgraph.RGraphModel;
+import io.petermueller.petrinetz.util.BoundednessAnalysis;
+import io.petermueller.petrinetz.util.Event;
+import io.petermueller.petrinetz.util.EventListener;
+import io.petermueller.petrinetz.views.RGraphView;
+import io.petermueller.petrinetz.views.TextAreaView;
+import io.petermueller.petrinetz.views.ToolbarView;
+import io.petermueller.petrinetz.views.DialogWindowView;
+import io.petermueller.petrinetz.views.MainFrameView;
+
+public class ToolbarController {
+	private PetriNetModel petriNetModel;
+	private ToolbarView toolbarView;
+	private FileSystemModel fileSystemModel;
+	private TextAreaView textAreaView;
+	private RGraphModel rGraphModel;
+	private MainFrameView mainFrameView;
+	
+	public ToolbarController(
+		ToolbarView toolbarView,
+		FileSystemModel fileSystemModel,
+		PetriNetModel petriNetModel,
+		RGraphModel rGraphModel,
+		RGraphView rGraphView,
+		TextAreaView textAreaView,
+		MainFrameView mainFrameView) {
+		this.petriNetModel = petriNetModel;
+		this.toolbarView = toolbarView;
+		this.fileSystemModel = fileSystemModel;
+		this.textAreaView = textAreaView;
+		this.rGraphModel = rGraphModel;
+		this.mainFrameView = mainFrameView;
+		
+		addButtonListeners();
+		addFileSystemListener();
+		addPetriNetListener();
+	}
+	
+	private void togglePrevNextFileButtons() {
+		if (fileSystemModel.prevFile != null) {
+			toolbarView.buttonPrevFile.setEnabled(true);
+		} else {
+			toolbarView.buttonPrevFile.setEnabled(false);
+		}
+		if (fileSystemModel.nextFile != null) {
+			toolbarView.buttonNextFile.setEnabled(true);
+		} else {
+			toolbarView.buttonNextFile.setEnabled(false);
+		}
+	}
+	
+	private void toggleTokenButtons() {
+		if (petriNetModel.selectedPlace == null) {
+			toolbarView.buttonAddToken.setEnabled(false);
+			toolbarView.buttonRemoveToken.setEnabled(false);
+		} else {
+			toolbarView.buttonAddToken.setEnabled(true);
+			if (petriNetModel.selectedPlace.currentTokens > 0) {
+				toolbarView.buttonRemoveToken.setEnabled(true);
+			} else {
+				toolbarView.buttonRemoveToken.setEnabled(false);
+			}
+		}
+	}
+	
+	private void toggleResetButton() {
+		if (petriNetModel.isAtCustomMarking) {
+			toolbarView.buttonReset.setEnabled(true);
+		} else {
+			toolbarView.buttonReset.setEnabled(false);
+		}
+	}
+	
+	private void toggleClearRGButton() {
+		toolbarView.buttonClearRG.setEnabled(true);
+	}
+	
+	private void toggleClearTextButton() {
+		toolbarView.buttonClearText.setEnabled(true);
+	}
+	
+	private void toggleBoundednessAnalysisButton() {
+		toolbarView.buttonBoundednessAnalysis.setEnabled(true);
+	}
+	
+	private void addButtonListeners() {
+		toolbarView.buttonPrevFile.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				PetriNetModel loadedPetriNet = fileSystemModel.readNewFile(
+						fileSystemModel.prevFile
+				);
+				if (loadedPetriNet != null) {
+					petriNetModel.load(loadedPetriNet);
+					fileSystemModel.notifyGui();
+				}
+			}
+		});
+		
+		toolbarView.buttonNextFile.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				PetriNetModel loadedPetriNet = fileSystemModel.readNewFile(
+						fileSystemModel.nextFile
+				);
+				if (loadedPetriNet != null) {
+					petriNetModel.load(loadedPetriNet);
+					fileSystemModel.notifyGui();
+				}
+			}
+		});
+		
+		toolbarView.buttonAddToken.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				petriNetModel.addUserToken();
+			}
+		});
+		
+		toolbarView.buttonRemoveToken.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				petriNetModel.removeUserToken();
+			}
+		});
+		
+		toolbarView.buttonReset.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				petriNetModel.reset();
+			}
+		});
+		
+		toolbarView.buttonClearRG.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				petriNetModel.reset();
+				rGraphModel.reset(petriNetModel.places);
+			}
+		});
+		
+		toolbarView.buttonClearText.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				textAreaView.clear();
+			}
+		});
+		
+		toolbarView.buttonBoundednessAnalysis.addActionListener(
+				new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				BoundednessAnalysis analysis = new BoundednessAnalysis(
+						petriNetModel);
+				petriNetModel.load(analysis.petriNet);
+				rGraphModel.load(analysis.rGraph);
+				textAreaView.printBoundednessResults(analysis);
+				String result = (analysis.isBounded)
+						? "Petri net is bounded."
+						: "Petri net is unbounded.";
+				new DialogWindowView(mainFrameView.mainFrame, result);
+			}
+		});
+		
+	}
+	
+	private void addFileSystemListener() {
+		fileSystemModel.addEventListener(new EventListener() {
+			@Override
+			public void event(Event eventType) {
+				if (eventType == Event.FILESYSTEM_NEW_FILE_OPENED) {
+					togglePrevNextFileButtons();
+					toggleResetButton();
+					toggleTokenButtons();
+					toggleClearRGButton();
+					toggleClearTextButton();
+					toggleBoundednessAnalysisButton();
+				}
+			}
+		});
+	}
+	
+	private void addPetriNetListener() {
+		petriNetModel.addEventListener(new EventListener() {
+			@Override
+			public void event(Event eventType) {			
+				if (eventType == Event.PETRINET_USER_SELECTED_A_PLACE) {
+					toggleTokenButtons();
+				}
+				if (eventType == Event.PETRINET_TRANSITION_FIRED ||
+					eventType == Event.PETRINET_MARKING_EDITED ||
+					eventType == Event.PETRINET_NEW_NET_LOADED) {
+					toggleTokenButtons();
+					toggleResetButton();
+				}
+			}
+		});
+	}
+}

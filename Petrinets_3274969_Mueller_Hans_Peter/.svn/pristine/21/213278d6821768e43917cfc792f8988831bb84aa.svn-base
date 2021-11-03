@@ -1,0 +1,12 @@
+package io.petermueller.petrinetz.models.petrinet;
+
+public class Place extends Location {
+	public int currentTokens;
+	public int startTokens;
+	
+	public Place(String id) {
+		this.id = id;
+		this.currentTokens = 0;
+		this.startTokens = 0;
+	}
+}

@@ -1,0 +1,186 @@
+package io.petermueller.petrinetz.util.boundedness_analysis;
+
+import java.util.ArrayList;
+import java.util.List;
+import io.petermueller.petrinetz.models.petrinet.PetriNetModel;
+import io.petermueller.petrinetz.models.petrinet.Transition;
+import io.petermueller.petrinetz.models.rgraph.Marking;
+import io.petermueller.petrinetz.models.rgraph.RGraphModel;
+import io.petermueller.petrinetz.models.rgraph.TransitionArc;
+
+public class BoundednessAnalysis {
+	
+	public static Boolean isUnbounded(
+			PetriNetModel petriNet,
+			RGraphModel rGraph) {
+		Marking currentMarking = new Marking(petriNet.places);
+		List<Marking> visitedQueue = new ArrayList<Marking>();
+		List<Marking> searchQueue = new ArrayList<Marking>();
+		searchQueue.add(currentMarking);
+		Boolean result = traversePetriNetBreathFirst(
+			currentMarking,
+			visitedQueue,
+			petriNet,
+			searchQueue,
+			rGraph);
+		
+		return result;
+	}
+
+	private static Boolean traversePetriNetBreathFirst(
+			Marking currentMarking,
+			List<Marking> visitedQueue,
+			PetriNetModel petriNet,
+			List<Marking> searchQueue,
+			RGraphModel rGraph) {
+		Boolean result = false;
+		while (!searchQueue.isEmpty()) {
+			currentMarking = searchQueue.get(0);
+			searchQueue.remove(0);
+			if (hasAbortCondition(currentMarking, visitedQueue, rGraph)) {
+				return true;
+			} else if (graphIsCircular(currentMarking, visitedQueue)) {
+				System.out.println("Stop recursiveness because of circle.");
+			} else {
+				visitedQueue.add(currentMarking);
+				petriNet.setToMarking(currentMarking.places);
+				List<Marking> reachableMarkings = getReachableMarkings(petriNet);
+				for (Marking marking : reachableMarkings) {
+					searchQueue.add(searchQueue.size(), marking);
+				}
+			}
+		}	
+		return result;
+	}
+	
+	private static Boolean hasAbortCondition(
+			Marking current,
+			List<Marking> visitedQueue,
+			RGraphModel rGraph) {
+		for (Marking visited : visitedQueue) {
+			Boolean condition1 = hasAtLeastAsMuchTokens(current, visited);
+			Boolean condition2 = hasOneTokenMore(current, visited);
+			Boolean condition3 = isReachable(current, visited, rGraph);
+			if (condition1 && condition2 && condition3) {
+				System.out.println(current.toString() + " | " + visited.toString());
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private static Boolean hasAtLeastAsMuchTokens(
+		Marking current,
+		Marking visited) {
+		Boolean result = true;
+		for (int i = 0; i < visited.places.size(); i++) {
+			int currentPlaceTokens = current.places.get(i).currentTokens;
+			int visitedPlaceTokens = visited.places.get(i).currentTokens;
+			if (currentPlaceTokens < visitedPlaceTokens) {
+				result = false;
+			}
+		}
+		return result;
+	}
+	
+	private static Boolean hasOneTokenMore(
+		Marking current,
+		Marking visited) {
+		Boolean result = false;
+		for (int i = 0; i < visited.places.size(); i++) {
+			int currentPlaceTokens = current.places.get(i).currentTokens;
+			int visitedPlaceTokens = visited.places.get(i).currentTokens;
+			if (currentPlaceTokens > visitedPlaceTokens) {
+				result = true;
+			}
+		}
+		return result;
+	}
+	
+	private static Boolean isReachable(
+			Marking targetMarking,
+			Marking sourceMarking,
+			RGraphModel rGraph) {
+		List<Marking> visited = new ArrayList<Marking>();
+		Boolean result = traverseRGraphDepthFirst(
+				targetMarking,
+				sourceMarking,
+				rGraph,
+				visited);
+		
+		return result;
+	};
+	
+	private static Boolean traverseRGraphDepthFirst(
+			Marking targetMarking,
+			Marking sourceMarking,
+			RGraphModel rGraph,
+			List<Marking> visited) {
+		Boolean result = false;
+		if (graphIsCircular(sourceMarking, visited)) {	
+			result = false;
+		} else {
+			visited.add(sourceMarking);
+			for (TransitionArc arc : rGraph.arcs) {
+				if (arc.source.id.equals(sourceMarking.id)) {
+					if (arc.target.id.equals(targetMarking.id)) {
+						return true;
+					} else {
+						result = traverseRGraphDepthFirst(
+								targetMarking,
+								arc.target,			
+								rGraph,
+								visited);
+					}
+				}
+			}
+		}
+		return result;
+	}
+	
+	private static List<Marking> getReachableMarkings(
+		PetriNetModel petriNet) {
+		Marking currentMarking = new Marking(petriNet.places);
+		List<Marking> reachableMarkings = new ArrayList<Marking>();
+		List<Transition> enabledTransitions = new ArrayList<Transition>();
+		for (Transition transition : petriNet.transitions) {
+			if (transition.isEnabled) {
+				enabledTransitions.add(transition);
+			}
+		}
+		for (Transition transition : enabledTransitions) {
+			petriNet.setToMarking(currentMarking.places);
+			petriNet.fire(transition);
+			Marking marking = new Marking(petriNet.places);
+			reachableMarkings.add(marking);
+		}
+		petriNet.setToMarking(currentMarking.places);
+		return reachableMarkings;
+	}
+	
+	private static Boolean graphIsCircular(
+		Marking currentMarking,
+		List<Marking> queue) {
+		Boolean result = false;
+		for (Marking queueElement : queue) {
+			if (markingIsEqual(queueElement, currentMarking)) {
+				result = true;
+			}
+		}
+		return result;
+	}
+	
+	private static Boolean markingIsEqual(
+		Marking marking1,
+		Marking marking2) {
+		Boolean result = true;
+		for (int i = 0; i < marking1.places.size(); i++) {
+			int marking1Tokens = marking1.places.get(i).currentTokens;
+			int marking2Tokens = marking2.places.get(i).currentTokens;
+			if (marking1Tokens != marking2Tokens) {
+				result = false;
+			}
+		}
+		return result;
+	}
+}

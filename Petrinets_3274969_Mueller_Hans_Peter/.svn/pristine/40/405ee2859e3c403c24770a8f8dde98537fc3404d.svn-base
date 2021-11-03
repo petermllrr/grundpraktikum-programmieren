@@ -1,0 +1,181 @@
+package io.petermueller.petrinetz.models.rgraph;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import io.petermueller.petrinetz.models.petrinet.Place;
+import io.petermueller.petrinetz.models.petrinet.Transition;
+import io.petermueller.petrinetz.util.Event;
+import io.petermueller.petrinetz.util.EventEmitter;
+
+public class RGraphModel extends EventEmitter {
+	public List<Marking> markings;
+	public List<TransitionArc> arcs;
+	
+	public RGraphModel() {
+		markings = new ArrayList<Marking>();
+		arcs = new ArrayList<TransitionArc>();
+	}
+	
+	public void addTransition(
+			List<Place> places,
+			Transition lastTransition) {
+		Marking source = getActiveMarking();
+		addMarking(places);
+		addArc(lastTransition, source);
+	}
+	
+	public void addMarking(List<Place> places) {
+		String id = generateMarkingId(places);
+		if (!markingExists(id)) {
+			Marking marking = new Marking(id, true, places);
+			markings.add(marking);
+			setAsActiveMarking(marking);
+		} else {
+			setAsActiveMarking(getMarkingById(id));
+		}
+	}
+	
+	public void reset(List<Place> places) {
+		markings = new ArrayList<Marking>();
+		arcs = new ArrayList<TransitionArc>();
+		addMarking(places);
+		setAsRoot(places);
+		fireEvent(Event.RGRAPH_RESET);
+	}
+	
+	public void goToMarking(List<Place> places) {
+		String resetToId = generateMarkingId(places);
+		if (markingExists(resetToId)) {
+			setAsActiveMarking(getMarkingById(resetToId));
+			removeLatestTransition();
+		} 
+		else {
+			Marking marking = new Marking(resetToId, true, places);
+			markings.add(marking);
+			setAsActiveMarking(marking);
+			removeLatestTransition();
+		}
+		fireEvent(Event.RGRAPH_GO_TO_MARKING);
+	}
+	
+	public Marking getMarkingById(String id) {
+		for (Marking marking : markings) {
+			if (marking.id.equals(id)) {
+				return marking;
+			}
+		}
+		return null;
+	}
+	
+	private void setAsRoot(List<Place> places) {
+		Marking root = getMarkingById(generateMarkingId(places));
+		root.isRoot = true;
+	}
+	
+	private void addArc(Transition lastTransition, Marking source) {
+		String id = generateTransitionId(lastTransition);
+		Marking target = getActiveMarking();
+		if (!transitionExists(id, source, target)) {
+			TransitionArc arc = new TransitionArc(id, source, target);
+			arcs.add(arc);
+			setAsLastTransition(arc);
+		} else {
+			setAsLastTransition(getArcById(id, source, target));
+		}
+		
+	}
+
+	private String generateMarkingId(List<Place> places) {
+		sortPlaces(places);
+		String id = "(";
+		for (Place place : places) {
+			id = id + place.currentTokens + "|";
+		}
+		id = id.substring(0, id.length() - 1);
+		id = id + ")";
+		return id;
+	};
+	
+	private String generateTransitionId(Transition lastTransition) {
+		return "[" + lastTransition.id + "] " + lastTransition.name;
+	}
+
+	private void sortPlaces(List<Place> places) {
+		Collections.sort(places, new Comparator<Place>() {
+			@Override
+			public int compare(Place o1, Place o2) {
+				return o1.id.compareTo(o2.id);
+			}
+		});
+	}
+	
+	private Boolean markingExists(String id) {
+		if (getMarkingById(id) != null) {
+			return true;
+		}
+		return false;
+	}
+	
+	private Boolean transitionExists(
+			String id,
+			Marking source,
+			Marking target) {
+		if (getArcById(id, source, target) != null) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+
+	private TransitionArc getArcById(
+		String id,
+		Marking source,
+		Marking target) {
+		for (TransitionArc arc : arcs) {
+			if (arc.id.equals(id) &&
+				arc.source == source &&
+				arc.target == target) {
+				return arc;
+			}
+		}
+		return null;
+	}
+	
+	private void setAsActiveMarking(Marking activeMarking) {
+		for (Marking marking : markings) {
+			if (marking.id.equals(activeMarking.id)) {
+				marking.isActive = true;
+			} else {
+				marking.isActive = false;
+			}
+		}
+	}
+	
+	private void setAsLastTransition(TransitionArc latestArc) {
+		for (TransitionArc arc : arcs) {
+			if (arc == latestArc) {
+				arc.isLatest = true;
+			} else {
+				arc.isLatest = false;
+			}
+		}
+	}
+	
+	private Marking getActiveMarking() {
+		for (Marking marking : markings) {
+			if (marking.isActive) {
+				return marking;
+			}
+		}
+		return null;
+	}
+	
+	private void removeLatestTransition() {
+		for (TransitionArc arc : arcs) {
+			arc.isLatest = false;
+		} 
+	}
+}

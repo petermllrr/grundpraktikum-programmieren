@@ -1,0 +1,19 @@
+# Improvements
+
+## Today
+
+- [X] Tokens > 9
+- [X] Active place visual highlight
+
+## ⚠️ Fix
+
+- [ ] Check if "Beispiele" directory exists
+- [X] Remove unneeded icons
+- [ ] Refactor FileSystemModel
+- [X] Remove or improve empty Layout
+- [X] Interface fuer Eventschleudern schreiben
+
+## ✨ Easy fixes
+
+- [ ] Remove min/max sizes and work with emptyBorder or
+	  setMargins(new Inset(...)) paddings

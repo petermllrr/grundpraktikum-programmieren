@@ -1,0 +1,108 @@
+package io.petermueller.petrinetz.models.filesystem;
+
+import java.io.File;
+import java.io.FilenameFilter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import io.petermueller.petrinetz.models.petrinet.*;
+import io.petermueller.petrinetz.util.Event;
+import io.petermueller.petrinetz.util.EventEmitter;
+
+public class FileSystemModel extends EventEmitter{
+	public File prevFile;
+	public File nextFile;
+	private JFileChooser fc;
+	
+	public FileSystemModel() {
+		fc = new JFileChooser(
+			System.getProperty("user.dir") + "/../ProPra-WS21-Basis/Beispiele"
+		);
+		fc.setFileFilter(
+			new FileNameExtensionFilter("Petri Net Markup Language", "pnml")
+		);
+	}
+
+	public String getCurrentFileName() {
+		return fc.getSelectedFile().getName();
+	}
+	
+	public File getCurrentFile() {
+		return fc.getSelectedFile();
+	}
+	
+	public PetriNetModel readNewFile(JFrame frame) {
+		fc.setMultiSelectionEnabled(false);
+		int returnVal = fc.showOpenDialog(frame);
+		if (returnVal == JFileChooser.APPROVE_OPTION) {
+			File file = fc.getSelectedFile();
+			checkPrevAndNextFiles();
+			return processFile(file);
+		}
+		return null;
+	}
+
+	public PetriNetModel readNewFile(File file) {
+		fc.setSelectedFile(file);
+		checkPrevAndNextFiles();
+		return processFile(file);
+	}
+	
+	public List<PetriNetModel> readNewFiles(JFrame frame) {
+		fc.setMultiSelectionEnabled(true);
+		int returnVal = fc.showOpenDialog(frame);
+		if (returnVal == JFileChooser.APPROVE_OPTION) {
+			File[] files = fc.getSelectedFiles();
+			List<PetriNetModel> petriNets = new ArrayList<PetriNetModel>();
+			for (File file : files) {
+				petriNets.add(processFile(file));
+			}
+			return petriNets;
+		}
+		return null;
+	}
+	
+	private PetriNetModel processFile(File file) {
+		PetriNetModel petriNet = new PetriNetModel();
+        PNMLParser pnmlParser = new PNMLParser(file, petriNet);
+        pnmlParser.initParser();
+		pnmlParser.parse();
+		petriNet.updateTransitions();
+		petriNet.fileName = file.getName();
+		return petriNet;
+	}
+	
+	public List<File> getAllFilesInDir() {
+		File dir = fc.getSelectedFile().getParentFile();
+		File[] files = dir.listFiles(new FilenameFilter() {
+		    public boolean accept(File dir, String name) {
+		        return name.toLowerCase().endsWith(".pnml");
+		    }
+		});
+		Arrays.sort(files);
+		List<File> fileList = Arrays.asList(files);
+		return fileList;
+	}
+	
+	public void checkPrevAndNextFiles() {
+		List<File> files = getAllFilesInDir();
+		int index = files.indexOf(fc.getSelectedFile());
+		if (index == 0) {
+			prevFile = null;
+		} else {
+			prevFile = files.get(index - 1);
+		}
+		if (index == files.size() - 1) {
+			nextFile = null;
+		} else {
+			nextFile = files.get(index + 1);
+		}
+	}
+	
+	public void notifyGui() {
+		fireEvent(Event.FILESYSTEM_NEW_FILE_OPENED);
+	}
+}

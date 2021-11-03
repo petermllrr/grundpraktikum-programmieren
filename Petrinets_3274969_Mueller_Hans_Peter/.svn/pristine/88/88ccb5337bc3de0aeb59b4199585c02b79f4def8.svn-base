@@ -1,0 +1,62 @@
+package io.petermueller.petrinetz.controllers;
+
+import io.petermueller.petrinetz.models.filesystem.FileSystemModel;
+import io.petermueller.petrinetz.models.petrinet.PetriNetModel;
+import io.petermueller.petrinetz.models.rgraph.RGraphModel;
+import io.petermueller.petrinetz.util.Event;
+import io.petermueller.petrinetz.util.EventListener;
+import io.petermueller.petrinetz.views.RGraphView;
+
+public class RGraphController {
+	protected RGraphView rGraphView;
+	protected RGraphModel rGraphModel;
+	protected FileSystemModel fileSystemModel;
+	protected PetriNetModel petriNetModel;
+	
+	public RGraphController(
+		RGraphView rGraphView,
+		RGraphModel rGraphModel,
+		FileSystemModel fileSystemModel,
+		PetriNetModel petriNetModel) {
+		this.rGraphView = rGraphView;
+		this.rGraphModel = rGraphModel;
+		this.fileSystemModel = fileSystemModel;
+		this.petriNetModel = petriNetModel;
+		
+		
+		fileSystemModel.addEventListener(new EventListener() {
+			@Override
+			public void event(Event eventType) {
+				if (eventType == Event.FILESYSTEM_NEW_FILE_OPENED) {
+					rGraphModel.clear(petriNetModel.places);
+					rGraphView.renderInitialRGraph(rGraphModel.markings);
+				}
+			}
+		});
+		
+		/*
+		rGraphModel.addEventListener(new EventListener() {
+			@Override
+			public void event(Event eventType) {
+				if (eventType == Event.RGRAPH_NEW_NODE_ADDED) {
+					rGraphView.updateRGraph(rGraphModel);
+				}
+			}
+		});
+		*/
+		
+		petriNetModel.addEventListener(new EventListener() {
+			@Override
+			public void event(Event eventType) {
+				if (eventType == Event.PETRINET_TRANSITION_FIRED) {
+					rGraphModel.addTransition(
+						petriNetModel.places,
+						petriNetModel.lastTransition);
+					rGraphView.updateGraph(
+						rGraphModel.markings,
+						rGraphModel.arcs);
+				}
+			}
+		});
+	}
+}

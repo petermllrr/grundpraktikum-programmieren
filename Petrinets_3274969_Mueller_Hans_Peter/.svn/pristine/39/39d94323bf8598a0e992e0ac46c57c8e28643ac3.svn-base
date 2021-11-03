@@ -1,0 +1,226 @@
+package io.petermueller.petrinetz.models.petrinet;
+
+import java.util.ArrayList;
+import java.util.List;
+import io.petermueller.petrinetz.util.Event;
+import io.petermueller.petrinetz.util.EventEmitter;
+
+public class PetriNetModel extends EventEmitter {
+	public List<Transition> transitions;
+	public List<Place> places;
+	public List<Arc> arcs;
+	public Place selectedPlace;
+	public Boolean isAtCustomMarking;
+	public Boolean fileChanged;
+	public Transition lastTransition;
+	public String fileName;
+	
+	public PetriNetModel() {
+		transitions = new ArrayList<Transition>();
+		places = new ArrayList<Place>();
+		arcs = new ArrayList<Arc>();
+		selectedPlace = null;
+		isAtCustomMarking = false;
+		fileChanged = false;
+		lastTransition = null;
+	}
+	
+	public void clear() {
+		transitions = new ArrayList<Transition>();
+		places = new ArrayList<Place>();
+		arcs = new ArrayList<Arc>();
+		selectedPlace = null;
+		isAtCustomMarking = false;
+		fileChanged = false;
+		lastTransition = null;
+	}
+	
+	public void addTransition(String id) {
+		transitions.add(new Transition(id));
+		updateTransitions();
+	}
+	
+	public void addPlace(String id) {
+		places.add(new Place(id));
+		updateTransitions();
+	}
+	
+	public void addArc(String id, String source, String target) {
+		Location sourceObj = getLocation(source);
+		Location targetObj = getLocation(target);
+		arcs.add(new Arc(id, sourceObj, targetObj));
+		updateTransitions();
+	}
+	
+	public void setName(String id, String name) {
+		Location location = getLocation(id);
+		location.name = name;
+	}
+	
+	public void setTokens(String id, int tokens) {
+		Location location = getLocation(id);
+		Place place = (Place) location;
+		place.currentTokens = tokens;
+		place.startTokens = tokens;
+		updateTransitions();
+	}
+	
+	public void setPosition(String id, int x, int y) {
+		Location location = getLocation(id);
+		location.x = x;
+		location.y = y * (-1);
+	}
+	
+	public void updateTransitions() {
+		for (Transition transition : transitions) {
+			if (hasTruePreconditions(transition)) {
+				transition.isEnabled = true;
+			} else {
+				transition.isEnabled = false;
+			}
+		}
+	}
+	
+	public List<Place> getInputs(Transition transition) {
+		List<Place> inputs = new ArrayList<Place>();
+		for (Arc arc : arcs) {
+			if (arc.target == transition) {
+				inputs.add((Place) arc.source);
+			}
+		}
+		return inputs;
+	}
+	
+	public List<Place> getOutputs(Transition transition) {
+		List<Place> outputs = new ArrayList<Place>();
+		for (Arc arc : arcs) {
+			if (arc.source == transition) {
+				outputs.add((Place) arc.target);
+			}
+		}
+		return outputs;
+	}
+	
+	public Location getLocation(String query) {
+		for (Transition transition : transitions) {
+			if (transition.id.equals(query)) {
+				return transition;
+			}
+		}
+		for (Place place : places) {
+			if (place.id.equals(query)) {
+				return place;
+			}
+		}
+		return null;
+	}
+
+	public Boolean hasTruePreconditions(Transition transition) {
+		List<Place> preconditions = getInputs(transition);
+		Boolean result = true;
+		for (Place place : preconditions) {
+			if (place.currentTokens < 1) {
+				result = false;
+			}
+		}
+		return result;
+	}
+	
+	public void fire(Transition transition) {
+		if (hasTruePreconditions(transition)) {
+			List<Place> inputs = getInputs(transition);
+			List<Place> outputs = getOutputs(transition);
+			for (Place place : inputs) {
+				place.currentTokens --;
+			}
+			for (Place place : outputs) {
+				place.currentTokens ++;
+			}
+			updateTransitions();
+			isAtCustomMarking = true;
+			lastTransition = transition;
+			fireEvent(Event.PETRINET_TRANSITION_FIRED);
+		}
+	}
+	
+	public void setActivePlace(String id) {
+		selectedPlace = (Place) getLocation(id);
+		fireEvent(Event.PETRINET_USER_SELECTED_A_PLACE);
+	}
+	
+	public void setNoActivePlace() {
+		selectedPlace = null;
+		fireEvent(Event.PETRINET_USER_SELECTED_A_PLACE);
+	}
+	
+	public void addUserToken() {
+		selectedPlace.currentTokens ++;
+		setCurrentTokensAsStartTokens();
+	}
+	
+	public void removeUserToken() {
+		selectedPlace.currentTokens --;
+		setCurrentTokensAsStartTokens();
+	}
+	
+	public void reset() {
+		for (Place place : places) {
+			place.currentTokens = place.startTokens;
+		}
+		isAtCustomMarking = false;
+		updateTransitions();
+		fireEvent(Event.PETRINET_MARKING_RESET);
+	}
+	
+	public void setToMarking(List<Place> newPlaces) {
+		for (Place newPlace : newPlaces) {
+			for (Place place : this.places) {
+				if (newPlace.id.equals(place.id)) {
+					place.currentTokens = newPlace.currentTokens;
+				}
+			}
+		}
+		updateTransitions();
+		fireEvent(Event.PETRINET_MARKING_RESET);
+	}
+	
+	public void setToMarkingAndDontUpdateRGraph(List<Place> newPlaces) {
+		for (Place newPlace : newPlaces) {
+			for (Place place : this.places) {
+				if (newPlace.id.equals(place.id)) {
+					place.currentTokens = newPlace.currentTokens;
+				}
+			}
+		}
+		updateTransitions();
+	}
+	
+	public void load(PetriNetModel petriNet) {
+		clear();
+		for (Transition transition : petriNet.transitions) {
+			this.transitions.add(transition);
+		}
+		for (Place place : petriNet.places) {
+			this.places.add(place);
+		}
+		for (Arc arc : petriNet.arcs) {
+			this.arcs.add(arc);
+		}
+		this.selectedPlace = petriNet.selectedPlace;
+		this.isAtCustomMarking = petriNet.isAtCustomMarking;
+		this.fileChanged = petriNet.fileChanged;
+		this.lastTransition = petriNet.lastTransition;
+		this.fileName = petriNet.fileName;
+		fireEvent(Event.PETRINET_NEW_NET_LOADED);
+	}
+	
+	private void setCurrentTokensAsStartTokens() {
+		for (Place place : places) {
+			place.startTokens = place.currentTokens;
+		}
+		isAtCustomMarking = false;
+		fileChanged = true;
+		updateTransitions();
+		fireEvent(Event.PETRINET_MARKING_EDITED);
+	}
+}

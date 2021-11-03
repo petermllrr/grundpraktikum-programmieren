@@ -1,0 +1,266 @@
+package io.petermueller.petrinetz.views;
+
+import java.awt.Color;
+import java.awt.Font;
+import java.util.Formatter;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+
+import io.petermueller.petrinetz.models.filesystem.FileSystemModel;
+import io.petermueller.petrinetz.models.rgraph.RGraphModel;
+import io.petermueller.petrinetz.models.rgraph.TransitionArc;
+import io.petermueller.petrinetz.util.BatchProcessing;
+import io.petermueller.petrinetz.util.BoundednessAnalysis;
+
+public class TextAreaView {
+	public JScrollPane textArea;
+	private JTextArea inputField;
+	
+	public TextAreaView() {
+		inputField = new JTextArea();
+		textArea = new JScrollPane(inputField);
+		textArea.setBorder(
+				BorderFactory.createLineBorder(new Color(0xDADCE0), 1)
+		);
+		inputField.setText("Open a PNML file via \"File > Open…\"");
+		inputField.setBackground(Color.white);
+		inputField.setBorder(new EmptyBorder(8, 8, 8, 8));
+		inputField.setFont(new Font("monospaced", Font.PLAIN, 13));
+		inputField.setWrapStyleWord(true);
+		inputField.setLineWrap(true);
+		inputField.setEditable(false);
+	}
+	
+	public void setText(String text) {
+		inputField.setText(text);
+		scrollToEnd();
+	}
+	
+	public void output(String text) {
+		insertLineBreak();
+		insertTextBelow(text);
+		scrollToEnd();
+	}
+	
+	public void clear() {
+		inputField.setText("");
+	}
+	
+	public void showBoundednessDetails(
+			BoundednessAnalysis analysis,
+			FileSystemModel fileSystemModel,
+			RGraphModel rGraph) {
+		String result = "Boundedness analysis for " +
+				 		fileSystemModel.getCurrentFileName() + ":\n";
+		if (analysis.isBounded) {
+			int possibleMarkings = rGraph.markings.size();
+			result = result +
+					 "Bounded. " + possibleMarkings + " possible Markings.";
+		} else {
+			result = result + 
+					 "Unbounded. Abort criteria:\n" +
+					 "m    " + analysis.m1.id + "\n" +
+					 "m'   " + analysis.m2.id + "\n";
+			Boolean firstLine = true;
+			for (TransitionArc arc : analysis.detectionPath) {
+				if (firstLine) {
+					result = result +
+							"Path " + arc.id;
+					firstLine = false;
+				} else {
+					result = result + "\n" +
+							 "     " +
+							 arc.id;
+				}
+			}
+		}
+		output(result);
+	}
+	
+	private void insertLineBreak() {
+		String text = inputField.getText();
+		text = text + "\n";
+		inputField.setText(text);
+	}
+	
+	private void scrollToEnd() {
+		inputField.setCaretPosition(inputField.getDocument().getLength());
+	}
+	
+	private void insertTextBelow(String newText) {
+		String text = inputField.getText();
+		text = text + newText;
+		inputField.setText(text);
+	}
+
+	public void displayBatch(BatchProcessing batch) {
+		String headerName = "Filename";
+		String headerBounded = "Bounded";
+		String headerDetailsLine1 = "Nodes / Edges or";
+		String headerDetailsLine2 = "Edgelength:Edge; m, m'";
+		int lengthName = getMaxFileNameLength(batch);
+		int lengthBounded = headerBounded.length();
+		int lengthDetailsNodes = getMaxDetailsNodesLength(batch);
+		int lengthDetailsM1 = getLengthDetailM1Length(batch);
+		int lengthDetailsM2 = getLengthDetailM2Length(batch);
+		
+		String output = printTableHeader(
+				lengthName, lengthBounded, lengthDetailsNodes,
+				lengthDetailsM1, lengthDetailsM2, headerName,
+				headerBounded, headerDetailsLine1, headerDetailsLine2);
+		
+		output = output + printHorizontalLine(
+				lengthName,
+				lengthBounded,
+				lengthDetailsNodes,
+				lengthDetailsM1,
+				lengthDetailsM2);
+		
+		for (BoundednessAnalysis analysis : batch.analysisList) {
+			output = output + printAnalysisLine(
+					analysis, lengthName, lengthBounded, lengthDetailsNodes,
+					lengthDetailsM1, lengthDetailsM2);
+		}		
+		output(output);
+	}
+	
+	private String printAnalysisLine(
+			BoundednessAnalysis analysis,
+			int lengthName, int lengthBounded, int lengthDetailsNodes,
+			int lengthDetailsM1, int lengthDetailsM2) {
+		String filename = analysis.petriNet.fileName;
+		if (analysis.isBounded) {
+			String bounded = "Yes";
+			String nodes = Integer.toString(analysis.rGraph.markings.size());
+			String edges = Integer.toString(analysis.rGraph.arcs.size());
+			return String.format(
+					"%1$-" + lengthName +
+					"s | %2$-" + lengthBounded +
+					"s | %3$2s / %4$2s \n",
+					filename, bounded, nodes, edges);
+		} else {
+			String bounded = "No";
+			String path = generatePathString(analysis);
+			String m1 = analysis.m1.id;
+			String m2 = analysis.m2.id;
+			return String.format(
+					"%1$-" + lengthName +
+					"s | %2$-" + lengthBounded +
+					"s | %3$-" + lengthDetailsNodes +
+					"s %4$-" + lengthDetailsM1 +
+					"s %5$-" + lengthDetailsM2 +
+					"s \n",
+					filename, bounded, path, m1, m2
+					);
+		}
+	}
+
+	private String printHorizontalLine(
+			int lengthName, 
+			int lengthBounded, 
+			int lengthDetailsNodes, 
+			int lengthDetailsM1,
+			int lengthDetailsM2) {
+		String line;
+		line = new String(new char[lengthName + 1]).replace("\0", "-");
+		line = line + "|";
+		line = line + 
+				new String(new char[lengthBounded + 2]).replace("\0", "-");
+		line = line + "|";
+		int detailsLenght = lengthDetailsNodes +
+				lengthDetailsM1 +
+				lengthDetailsM2;
+		line = line + 
+				new String(new char[detailsLenght + 6]).replace("\0", "-");
+		line = line + "\n";
+		return line;
+	}
+
+	private int getMaxFileNameLength(BatchProcessing batch) {
+		int maxFileNameLength = 0;
+		for (BoundednessAnalysis analysis : batch.analysisList) {
+			if (analysis.petriNet.fileName.length() > maxFileNameLength) {
+				maxFileNameLength = analysis.petriNet.fileName.length();
+			}
+		}
+		return maxFileNameLength;
+	}
+	
+	private String generatePathString(BoundednessAnalysis analysis) {
+		if (analysis.isBounded) {
+			return "";
+		} else {
+			int length = analysis.detectionPath.size();
+			String nodes = "(";
+			for (TransitionArc arc : analysis.detectionPath) {
+				nodes = nodes + arc.nakedId + ",";
+			}
+			nodes = nodes + ")";
+			return length + ":" + nodes + ";";
+		}
+	}
+	
+	private int getMaxDetailsNodesLength(BatchProcessing batch) {
+		int maxLength = 0;
+		for (BoundednessAnalysis analysis : batch.analysisList) {
+			int stringLength = generatePathString(analysis).length();
+			if (stringLength > maxLength) {
+				maxLength = stringLength;
+			}
+		}
+		return maxLength;
+	}
+	
+	private int getLengthDetailM1Length(BatchProcessing batch) {
+		int maxLength = 0;
+		for (BoundednessAnalysis analysis : batch.analysisList) {
+			if(!analysis.isBounded) {
+				int stringLength = analysis.m1.id.length();
+				if (stringLength > maxLength) {
+					maxLength = stringLength;
+				}
+			}
+		}
+		return maxLength;
+	}
+	
+	private int getLengthDetailM2Length(BatchProcessing batch) {
+		int maxLength = 0;
+		for (BoundednessAnalysis analysis : batch.analysisList) {
+			if(!analysis.isBounded) {
+				int stringLength = analysis.m2.id.length();
+				if (stringLength > maxLength) {
+					maxLength = stringLength;
+				}
+			}
+		}
+		return maxLength;
+	}
+	
+	private String printTableHeader(
+			int lengthName,
+			int lengthBounded,
+			int lengthDetailsNodes,
+			int lengthDetailsM1,
+			int lengthDetailsM2,
+			String headerName,
+			String headerBounded,
+			String headerDetailsLine1,
+			String headerDetailsLine2) {
+		return String.format(
+				"%5$" + lengthName +
+				"s | %5$" + lengthBounded +
+				"s | %3$-" + (lengthDetailsNodes + lengthDetailsM1 +
+						 lengthDetailsM2) + "s \n" +
+				"%1$-" + lengthName +
+				"s | %2$-" + lengthBounded +
+				"s | %4$-" + (lengthDetailsNodes + lengthDetailsM1 +
+							 lengthDetailsM2) + "s \n",
+				headerName,
+				headerBounded,
+				headerDetailsLine1,
+				headerDetailsLine2,
+				"");
+	}
+}

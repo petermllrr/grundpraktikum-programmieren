@@ -1,0 +1,8 @@
+io.petermueller.petrinetz
+io.petermueller.petrinetz.controllers
+io.petermueller.petrinetz.models.filesystem
+io.petermueller.petrinetz.models.petrinet
+io.petermueller.petrinetz.models.rgraph
+io.petermueller.petrinetz.util
+io.petermueller.petrinetz.views
+tests

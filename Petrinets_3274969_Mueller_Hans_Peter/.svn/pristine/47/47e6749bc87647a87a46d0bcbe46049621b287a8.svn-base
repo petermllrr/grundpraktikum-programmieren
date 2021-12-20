@@ -1,9 +1,0 @@
-package io.petermueller.petrinetz.models.petrinet;
-
-public class Transition extends Location {
-	public boolean isEnabled;
-
-	public Transition(String id) {
-		this.id = id;
-	}
-}

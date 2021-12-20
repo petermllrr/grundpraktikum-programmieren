@@ -1,9 +1,0 @@
-package io.petermueller.petrinetz.util;
-
-public enum Event {
-	NEW_FILE_OPENED,
-	PETRINET_UPDATED,
-	ACTIVE_PLACE_CHANGED,
-	TRANSITION_CLICKED,
-	MARKING_CHANGED;
-}
